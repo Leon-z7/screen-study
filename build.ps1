@@ -13,8 +13,11 @@ $build = Join-Path ([IO.Path]::GetTempPath()) ('ScreenStudyBuild-' + [Guid]::New
 $payload = Join-Path $build 'payload'
 New-Item -ItemType Directory -Force -Path $payload,$Output | Out-Null
 try {
+    & $NodeExe (Join-Path $PSScriptRoot 'prepare-ocr.mjs')
+    if ($LASTEXITCODE) { throw 'OCR assets are missing. Run npm ci before building.' }
     $appFiles = @('index.html','desktop.html','desktop.js','banks.mjs','serve.mjs','start.ps1','tls.ps1','qrcode.js','QRCODE-LICENSE.txt')
     foreach ($file in $appFiles) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination $payload }
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'ocr') -Destination $payload -Recurse
     Copy-Item -LiteralPath $NodeExe -Destination (Join-Path $payload 'node.exe')
     Copy-Item -LiteralPath $NodeLicense -Destination (Join-Path $payload 'NODE-LICENSE.txt')
     $launcher = Join-Path $payload 'ScreenStudy.exe'
@@ -24,8 +27,8 @@ try {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zip = Join-Path $build 'payload.zip'
     [IO.Compression.ZipFile]::CreateFromDirectory($payload, $zip)
-    $setup = Join-Path $Output 'ScreenStudy-Setup-v0.1.1-x64.exe'
-    & $csc /nologo /codepage:65001 /target:winexe /platform:x64 /reference:System.Windows.Forms.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:Microsoft.CSharp.dll "/out:$setup" "/resource:$zip,payload.zip" (Join-Path $PSScriptRoot 'Setup.cs')
+    $setup = Join-Path $Output 'ScreenStudy-Setup-v0.1.2-x64.exe'
+    & $csc /nologo /codepage:65001 /target:winexe /platform:x64 /reference:System.Windows.Forms.dll /reference:System.IO.Compression.dll /reference:Microsoft.CSharp.dll "/out:$setup" "/resource:$zip,payload.zip" (Join-Path $PSScriptRoot 'Setup.cs')
     if ($LASTEXITCODE) { throw 'Setup build failed.' }
     Get-Item -LiteralPath $setup
 } finally {

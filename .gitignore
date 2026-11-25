@@ -1,4 +1,6 @@
 dist/
+node_modules/
+ocr/
 *.tmp
 node.exe
 *.pfx

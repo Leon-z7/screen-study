@@ -27,6 +27,17 @@ await mkdir(directory, { recursive: true })
 const banks = await openBanks(directory)
 const [mobilePage, desktopPage, desktopScript, qrScript] = await Promise.all(
   ['index.html', 'desktop.html', 'desktop.js', 'qrcode.js'].map(name => readFile(new URL(name, import.meta.url))))
+const scriptType = 'text/javascript; charset=utf-8'
+const ocrFiles = new Map(await Promise.all([
+  ['tesseract.min.js', scriptType],
+  ['worker.min.js', scriptType],
+  ['tesseract-core-lstm.wasm.js', scriptType],
+  ['tesseract-core-simd-lstm.wasm.js', scriptType],
+  ['chi_sim.traineddata.gz', 'application/gzip'],
+  ['eng.traineddata.gz', 'application/gzip']
+].map(async ([name, type]) => [
+  '/ocr/v1/' + name, { type, body: await readFile(new URL('./ocr/' + name, import.meta.url)) }
+])))
 const certPath = process.env.STUDY_TLS_CERT
 const keyPath = process.env.STUDY_TLS_KEY
 const rootPath = process.env.STUDY_TLS_ROOT
@@ -94,9 +105,10 @@ function pairPage(host, port, os) {
 <h1>${ios ? 'iPhone' : 'Android'} 连接 ScreenStudy</h1>
 <p>手机和电脑连接同一 Wi-Fi。请核对电脑控制台显示的证书 SHA-256 指纹，再信任自己电脑生成的证书。</p>
 <p><code>${fingerprint}</code></p>
-<ol><li><a href="${pairPath}/${certPath}">下载本机证书</a>。电脑已配对时可直接点下方的打开链接。</li>${instructions}
+<ol><li><a href="${pairPath}/${certPath}">下载本机证书</a>。此手机已信任证书时可直接点下方的打开链接。</li>${instructions}
 <li>点「打开拍屏查题」，选择「开始实时扫描」，允许摄像头。</li></ol>
 <p><a id="open" href="https://${host}:${port}/">打开拍屏查题</a></p>
+<p>证书、识别组件和题库均由本机通过局域网提供，无需连接外网。</p>
 <p>完成后可从手机设置移除 ScreenStudy Local CA。工作管理设备可能限制安装用户 CA。</p>
 <script>const link=document.getElementById('open');if(/^#[A-Za-z0-9_-]{24}$/.test(location.hash))link.href+=location.hash;</script></html>`
 }
@@ -105,6 +117,11 @@ function createMobile(cert) {
   return httpsServer(cert, (request, response) => {
     headers(response)
     if (request.method === 'GET' && request.url === '/') return html(response, mobilePage)
+    const asset = ocrFiles.get(request.url)
+    if (request.method === 'GET' && asset) {
+      response.setHeader('Cache-Control', 'private, max-age=31536000, immutable')
+      return send(response, asset.type, asset.body)
+    }
     if (request.method === 'GET' && request.url === '/knowledge' &&
         request.headers.authorization === 'Bearer ' + token) {
       const data = banks.knowledge()

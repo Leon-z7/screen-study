@@ -3,11 +3,12 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 [assembly: AssemblyTitle("ScreenStudy Setup")]
 [assembly: AssemblyProduct("ScreenStudy")]
-[assembly: AssemblyVersion("0.1.1.0")]
+[assembly: AssemblyVersion("0.1.2.0")]
 
 internal static class Setup
 {
@@ -33,9 +34,19 @@ internal static class Setup
                 {
                     foreach (ZipArchiveEntry entry in archive.Entries)
                     {
-                        if (entry.Name != entry.FullName || String.IsNullOrEmpty(entry.Name))
+                        string name = entry.FullName.Replace('\\', '/');
+                        string folder = staging;
+                        if (name.StartsWith("ocr/", StringComparison.Ordinal))
+                        {
+                            folder = Path.Combine(staging, "ocr");
+                            name = name.Substring(4);
+                        }
+                        if (!Regex.IsMatch(name, @"\A[A-Za-z0-9][A-Za-z0-9._-]*\z") || name.EndsWith(".", StringComparison.Ordinal))
                             throw new InvalidDataException("安装包内容有误。");
-                        entry.ExtractToFile(Path.Combine(staging, entry.Name));
+                        Directory.CreateDirectory(folder);
+                        using (Stream input = entry.Open())
+                        using (var output = new FileStream(Path.Combine(folder, name), FileMode.CreateNew))
+                            input.CopyTo(output);
                     }
                 }
                 if (Directory.Exists(destination)) Directory.Move(destination, previous);
