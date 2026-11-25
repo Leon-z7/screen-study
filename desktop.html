@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ScreenStudy 控制台</title>
+<style>
+  :root{font:16px/1.55 system-ui,sans-serif;color:#19312a;background:#edf4f0}
+  [hidden]{display:none!important} *{box-sizing:border-box} body{margin:0} main{max-width:950px;margin:0 auto;padding:42px 24px}
+  h1{font-size:36px;margin:0} h2{font-size:22px;margin:0 0 12px} p{margin:8px 0}
+  header,.bar,.file{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  section{background:#fff;border:1px solid #d5e4dd;border-radius:18px;padding:22px;margin-top:18px}
+  button,select,input[type=file]::file-selector-button{font:inherit;border:1px solid #afc8bd;border-radius:8px;padding:7px 12px;background:#fafdfb;color:#194336;cursor:pointer}
+  button.primary{background:#086149;color:#fff;border-color:#086149} button:disabled{opacity:.5}
+  input[type=checkbox]{width:18px;height:18px;accent-color:#086149}
+  input.readonly{flex:1;min-width:0;padding:9px 11px;border:1px solid #afc8bd;border-radius:8px;font:14px ui-monospace,monospace}
+  label.fileTitle{display:flex;align-items:center;gap:10px;font-weight:650;overflow-wrap:anywhere}
+  .file{border-top:1px solid #e4eee8;padding:12px 0}.file:first-child{margin-top:12px}
+  .meta,small{color:#506960}.meta{margin-left:28px} code{overflow-wrap:anywhere} ol{padding-left:24px}
+  .tabs{display:flex;gap:8px;margin:12px 0}.notice{min-height:25px;color:#28574a}
+  #qr{margin-top:14px;width:148px;height:148px;padding:5px;background:white;border:1px solid #d5e4dd;border-radius:9px;image-rendering:pixelated}
+</style>
+<main>
+<header><h1>ScreenStudy</h1><button id="quit">退出程序</button></header>
+<section aria-labelledby="connect">
+<h2 id="connect">连接手机</h2>
+<p>电脑和手机连接同一 Wi-Fi，保持 ScreenStudy 运行。</p>
+<div class="tabs" aria-label="手机系统">
+<button id="ios" aria-pressed="true" class="primary">iPhone / iPad</button><button id="android" aria-pressed="false">Android</button>
+</div>
+<ol><li id="browser"></li><li id="install"></li><li>在手机上打开查题页并允许摄像头。</li></ol>
+<div class="bar" id="links" hidden>
+<select id="host" aria-label="电脑局域网地址"></select>
+<input class="readonly" id="pair" readonly aria-label="手机配对链接">
+<button id="copy" class="primary">复制链接</button>
+</div>
+<canvas id="qr" aria-label="手机配对二维码" hidden></canvas>
+<p id="connection" role="status"></p>
+<details id="certificate" hidden><summary>查看本机证书 SHA-256 指纹</summary><code id="fingerprint"></code></details>
+</section>
+<section aria-labelledby="heading">
+<h2 id="heading">资料和题库</h2>
+<p>勾选本次测试要使用的文件。已经打开的手机页会自动更新。</p>
+<label for="import">导入文件</label> <input id="import" type="file" accept=".json,.txt" multiple>
+<details><summary>支持的格式</summary><p>题库 JSON 包含 question、answer，可加 aliases、source、page。知识库可导入 page、text 格式的 JSON，或以空行分段的 UTF-8 TXT。</p></details>
+<p id="status" class="notice" role="status"></p><div id="banks"></div>
+</section>
+</main>
+<script src="/qrcode.js"></script>
+<script src="/desktop.js"></script>
+</html>

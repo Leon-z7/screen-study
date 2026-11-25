@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>知识库 · 拍屏查题</title>
+<style>
+  :root { font-family: system-ui, sans-serif; color: #192b28; background: #f2f6f3; }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  main { max-width: 720px; padding: 28px 16px 48px; margin: auto; }
+  h1 { font-size: 30px; margin: 0 0 6px; }
+  h2 { font-size: 18px; margin: 0 0 12px; }
+  p { line-height: 1.65; margin: 8px 0; }
+  .muted, small { color: #526660; }
+  section { padding: 17px; margin-top: 16px; background: white; border: 1px solid #d9e4de; border-radius: 16px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  button, .button { display: inline-flex; align-items: center; padding: 10px 13px; border: 1px solid #bbd3c8; border-radius: 9px; background: #e9f3ee; color: #164638; font: inherit; cursor: pointer; }
+  button.primary { background: #076047; border-color: #076047; color: white; }
+  button:disabled { opacity: .5; cursor: default; }
+  [hidden] { display: none !important; }
+  .preview { position: relative; margin-top: 12px; overflow: hidden; background: #182b25; border-radius: 10px; height: min(30vh, 240px); height: min(30dvh, 240px); }
+  video { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .guide { position: absolute; inset: 14% 5%; border: 2px solid #bdffe2; border-radius: 8px; box-shadow: 0 0 0 800px #0005; pointer-events: none; }
+  textarea { width: 100%; min-height: 85px; padding: 10px; margin: 8px 0; border: 1px solid #bbd3c8; border-radius: 9px; font: inherit; }
+  article { border-top: 1px solid #d9e4de; padding: 10px 0 2px; }
+  article p { overflow-wrap: anywhere; }
+  .answer { font-size: 22px; font-weight: 700; color: #076047; }
+  summary { cursor: pointer; }
+  @media (max-width: 640px), (orientation: landscape) and (max-height: 500px) {
+    body.scanning { overflow: hidden; }
+    .scanning main {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      height: 100vh;
+      height: 100dvh;
+      padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+        max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    }
+    .scanning #title, .scanning #libraryStatus, .scanning #importPanel, .scanning #scanPanel h2 {
+      display: none;
+    }
+    .scanning section { margin: 0; padding: 10px 12px; }
+    .scanning #scanPanel { flex: none; }
+    .scanning #scanPanel button { min-height: 44px; padding: 5px 10px; font-size: 14px; }
+    .scanning #stop { margin-left: auto; }
+    .scanning #status { margin: 5px 0 0; font-size: 13px; line-height: 1.4; }
+    .scanning .preview { margin-top: 6px; height: min(28vh, 220px); height: min(28dvh, 220px); }
+    .scanning #resultPanel { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+    .scanning #resultPanel h2 { flex: none; margin: 0 0 4px; }
+    .scanning #resultBody { min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; }
+    .scanning #results article:first-child { border-top: 0; padding-top: 0; }
+    .scanning #results article:first-child p { margin-top: 4px; }
+    .scanning #editor { margin-top: 10px; }
+  }
+  @media (orientation: landscape) and (max-height: 500px) and (min-width: 540px) {
+    .scanning main { flex-direction: row; max-width: 960px; }
+    .scanning #scanPanel { flex: 0 0 48%; display: flex; flex-direction: column; }
+    .scanning .preview { height: auto; flex: 1; min-height: 0; }
+    .scanning #resultPanel { min-width: 0; }
+  }
+</style>
+<main>
+  <h1 id="title">拍屏查题</h1>
+  <p id="libraryStatus" class="muted">等待导入知识库</p>
+  <section id="scanPanel">
+    <h2>识别题目</h2>
+    <div class="actions">
+      <button id="start" class="primary">开始实时扫描</button>
+      <button id="take">拍一张</button>
+      <button id="upload">上传图片</button>
+      <button id="stop" hidden>停止扫描</button>
+    </div>
+    <input id="photo" type="file" accept="image/*" capture="environment" hidden>
+    <input id="image" type="file" accept="image/*" hidden>
+    <div id="preview" class="preview" hidden><video id="video" playsinline muted></video><div id="guide" class="guide" aria-hidden="true"></div></div>
+    <p id="status" class="muted" role="status">一次将一道题的题干对准取景框。</p>
+  </section>
+  <section id="resultPanel">
+    <h2 id="resultTitle">查题结果</h2>
+    <div id="resultBody" role="region" aria-labelledby="resultTitle" tabindex="0">
+      <div id="results" aria-live="polite"><p class="muted">识别或输入题目后显示结果。</p></div>
+      <details id="editor">
+        <summary>输入或修正题干</summary>
+        <textarea id="question" aria-label="题干" placeholder="粘贴或输入一道题的题干"></textarea>
+        <button id="search">查知识库</button>
+      </details>
+    </div>
+  </section>
+  <section id="importPanel">
+    <h2>导入知识库</h2>
+    <input id="files" type="file" accept=".json" multiple aria-label="导入知识库 JSON">
+    <p class="muted">支持逐页资料（page、text）及答题库（question、answer，可带 aliases、source、page）。每次打开网页时可重新导入。</p>
+  </section>
+</main>
+<script>
+  const $ = id => document.getElementById(id)
+  const references = new Map()
+  const answers = new Map()
+  const video = $('video')
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')
+  const fingerprint = document.createElement('canvas')
+  fingerprint.width = 32
+  fingerprint.height = 16
+  const fingerprintContext = fingerprint.getContext('2d', { willReadFrequently: true })
+  let stream, scanGeneration = 0, busy = false, timer, workerPromise, previousFrame, lastRead
+
+  function normalize(text) {
+    return text.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
+  }
+  function stem(text) {
+    return normalize(text.trim()
+      .replace(/^(?:(?:(?:第\s*)?\d+\s*[题、.．:：)）]|[（(]?(?:单选题?|多选题?|判断题?|填空题?|简答题?)[）)]?\s*[:：]?)\s*)+/u, '')
+      .split(/\n\s*[（(]?[A-HＡ-Ｈ]\s*[、.．:：)）]/iu)[0])
+  }
+  function grams(text) {
+    const pairs = new Set()
+    for (let i = 0; i < text.length - 1; i++) pairs.add(text.slice(i, i + 2))
+    return pairs
+  }
+  function importData(name, rows, key = name) {
+    if (!Array.isArray(rows) || !rows.length) throw new Error('需要非空 JSON 数组')
+    if (rows.every(row => Number.isInteger(row?.page) && typeof row.text === 'string')) {
+      const excerpts = rows.flatMap(row => row.text.replace(/\s+/g, '').split(/(?<=[。；！？])/u)
+        .filter(text => text.length >= 12)
+        .flatMap(text => text.match(/[\s\S]{1,350}/g).map(chunk => ({ name, page: row.page, text: chunk, keys: grams(normalize(chunk)) }))))
+      references.set(key, excerpts)
+    } else if (rows.every(row => typeof row?.question === 'string' && typeof row.answer === 'string' && stem(row.question) && row.answer.trim())) {
+      answers.set(key, rows.map(row => ({
+        answer: row.answer,
+        source: typeof row.source === 'string' ? row.source : name,
+        page: Number.isInteger(row.page) ? row.page : null,
+        keys: [row.question, ...(Array.isArray(row.aliases) ? row.aliases.filter(alias => typeof alias === 'string') : [])].map(stem).filter(Boolean)
+      })))
+    } else {
+      throw new Error('文件结构无法识别')
+    }
+    $('libraryStatus').textContent = `已载入 ${references.size} 份资料 · ${[...answers.values()].flat().length} 道题库题目`
+  }
+  function message(text) {
+    const paragraph = document.createElement('p')
+    paragraph.className = 'muted'
+    paragraph.textContent = text
+    $('results').append(paragraph)
+  }
+  function result(text, source, page, isAnswer = false) {
+    const article = document.createElement('article')
+    const paragraph = document.createElement('p')
+    const citation = document.createElement('small')
+    paragraph.textContent = text
+    if (isAnswer) paragraph.className = 'answer'
+    citation.textContent = source + (page === null ? '' : ` · PDF 第 ${page} 页`)
+    article.append(paragraph, citation)
+    $('results').append(article)
+  }
+  function search(value) {
+    const query = stem(value)
+    $('resultBody').scrollTop = 0
+    $('results').replaceChildren()
+    if (query.length < 4) return message('请提供至少四个有效字符。')
+    const matches = [...answers.values()].flat().filter(row => row.keys.includes(query))
+    const distinct = new Set(matches.map(row => normalize(row.answer)))
+    if (distinct.size === 1) {
+      const match = matches[0]
+      return result(match.answer, match.source, match.page, true)
+    }
+    const queryKeys = [...grams(query)]
+    const materials = [...references.values()].flat()
+    const weights = new Map(queryKeys.map(key => [key, Math.log(1 + materials.length / (1 + materials.filter(row => row.keys.has(key)).length))]))
+    const ranked = materials.map(row => ({
+      row,
+      score: queryKeys.reduce((score, key) => score + (row.keys.has(key) ? weights.get(key) : 0), 0)
+    })).filter(candidate => candidate.score >= 8).sort((a, b) => b.score - a.score)
+    message(distinct.size > 1 ? '题库中有不同答案，请核对原文。' :
+      ranked.length ? '题库未命中。以下是相关原文，请核对后作答。' : '未找到足够相关的题库答案或原文。')
+    if (distinct.size > 1) for (const match of matches) result(match.answer, match.source, match.page)
+    for (const {row} of ranked.slice(0, 3)) result(row.text, row.name, row.page)
+  }
+  async function getWorker() {
+    if (!workerPromise) {
+      workerPromise = (async () => {
+        $('status').textContent = '首次识别需下载中文 OCR 模型…'
+        if (!window.Tesseract) {
+          await new Promise((resolve, reject) => {
+            const script = document.createElement('script')
+            script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/tesseract.min.js'
+            script.onload = resolve
+            script.onerror = () => { script.remove(); reject(new Error('OCR 组件下载失败')) }
+            document.head.append(script)
+          })
+        }
+        const worker = await Tesseract.createWorker(['chi_sim', 'eng'], 1, { errorHandler: () => {} })
+        await worker.setParameters({ tessedit_pageseg_mode: '6' })
+        return worker
+      })().catch(error => { workerPromise = undefined; throw error })
+    }
+    return workerPromise
+  }
+  function drawFrame(source, x, y, width, height) {
+    const scale = Math.min(1, 1800 / Math.max(width, height))
+    canvas.width = Math.max(1, Math.round(width * scale))
+    canvas.height = Math.max(1, Math.round(height * scale))
+    context.drawImage(source, x, y, width, height, 0, 0, canvas.width, canvas.height)
+  }
+  function drawLiveFrame() {
+    const { videoWidth, videoHeight } = video
+    const view = video.getBoundingClientRect()
+    const guide = $('guide').getBoundingClientRect()
+    if (!videoWidth || !videoHeight || !view.width || !view.height) return false
+
+    // Undo the centered object-fit: cover crop to read the pixels inside the guide.
+    const scale = Math.max(view.width / videoWidth, view.height / videoHeight)
+    const imageLeft = view.left + (view.width - videoWidth * scale) / 2
+    const imageTop = view.top + (view.height - videoHeight * scale) / 2
+    drawFrame(video, (guide.left - imageLeft) / scale, (guide.top - imageTop) / scale,
+      guide.width / scale, guide.height / scale)
+    return true
+  }
+  function changed() {
+    fingerprintContext.drawImage(canvas, 0, 0, 32, 16)
+    const frame = fingerprintContext.getImageData(0, 0, 32, 16).data
+    let difference = 0
+    if (previousFrame) {
+      for (let i = 0; i < frame.length; i += 4) difference += Math.abs(frame[i + 1] - previousFrame[i + 1])
+      if (difference / (frame.length / 4) < 2.5) return false
+    }
+    previousFrame = frame
+    return true
+  }
+  async function recognize(generation) {
+    busy = true
+    try {
+      const worker = await getWorker()
+      if (generation !== scanGeneration) return
+      $('status').textContent = '正在识别题干…'
+      const { data } = await worker.recognize(canvas)
+      if (generation !== scanGeneration) return
+      const text = data.text.trim()
+      if (stem(text).length < 4 || data.confidence < 40) {
+        previousFrame = undefined
+        if (stream && lastRead) {
+          $('status').textContent = '题干识别不清 · 保留上一题结果'
+          return
+        }
+        $('results').replaceChildren()
+        $('question').value = ''
+        lastRead = ''
+        message('图片中的题干无法可靠识别。')
+        $('status').textContent = '题干识别不清，请靠近屏幕或减少反光。'
+        return
+      }
+      if (stem(text) !== lastRead) {
+        $('question').value = text
+        search(text)
+        lastRead = stem(text)
+      }
+      $('status').textContent = stream ? '扫描中 · 对准下一道题' : '识别完成 · 可手动修正题干'
+    } catch (error) {
+      if (generation === scanGeneration) {
+        stop()
+        $('status').textContent = `识别失败：${error.message || error}。可手动输入题干。`
+      }
+    } finally {
+      busy = false
+    }
+  }
+  async function scan(generation) {
+    if (generation !== scanGeneration || !stream) return
+    if (!busy && video.readyState >= 2 && drawLiveFrame() && changed()) await recognize(generation)
+    if (generation === scanGeneration) timer = setTimeout(() => scan(generation), 850)
+  }
+  function stop() {
+    scanGeneration++
+    clearTimeout(timer)
+    stream?.getTracks().forEach(track => track.stop())
+    stream = undefined
+    video.srcObject = null
+    document.body.classList.remove('scanning')
+    $('stop').hidden = $('preview').hidden = true
+    $('start').hidden = false
+    $('start').disabled = false
+    $('status').textContent = '扫描已停止。'
+  }
+  $('start').onclick = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      $('status').textContent = '实时扫描需要手机信任的 HTTPS。当前可以拍一张或上传图片。'
+      return
+    }
+    if (busy) return
+    $('start').disabled = true
+    $('stop').hidden = false
+    $('status').textContent = '正在打开摄像头…'
+    const generation = ++scanGeneration
+    try {
+      const camera = await navigator.mediaDevices.getUserMedia({video: { facingMode: { ideal: 'environment' }, width: {ideal: 1920} }, audio: false})
+      if (generation !== scanGeneration) return camera.getTracks().forEach(track => track.stop())
+      stream = camera
+      video.srcObject = stream
+      await video.play()
+      if (generation !== scanGeneration) return
+      $('preview').hidden = false
+      $('start').hidden = true
+      document.body.classList.add('scanning')
+      previousFrame = lastRead = undefined
+      await scan(generation)
+    } catch (error) {
+      if (generation !== scanGeneration) return
+      stop()
+      $('status').textContent = '无法打开摄像头。请检查权限，或改用拍一张。'
+    }
+  }
+  $('stop').onclick = stop
+  window.addEventListener('pagehide', stop)
+  $('search').onclick = () => { lastRead = undefined; search($('question').value) }
+  for (const [button, input] of [['take', 'photo'], ['upload', 'image']]) {
+    $(button).onclick = () => {
+      if (busy) { $('status').textContent = '正在识别，请稍候。'; return }
+      if (!$('stop').hidden) stop()
+      $(input).click()
+    }
+    $(input).onchange = async () => {
+      const file = $(input).files[0]
+      $(input).value = ''
+      if (!file || busy) return
+      if (!$('stop').hidden) stop()
+      const generation = ++scanGeneration
+      busy = true
+      const image = new Image()
+      const url = URL.createObjectURL(file)
+      try {
+        image.src = url
+        await image.decode()
+        if (generation !== scanGeneration) return
+        drawFrame(image, 0, 0, image.naturalWidth, image.naturalHeight)
+        lastRead = undefined
+        await recognize(generation)
+      } catch {
+        $('status').textContent = '无法读取这张图片，请试用 JPG 或 PNG。'
+      } finally {
+        URL.revokeObjectURL(url)
+        busy = false
+      }
+    }
+  }
+  $('files').onchange = async () => {
+    const errors = []
+    for (const file of $('files').files) {
+      try {
+        importData(file.name.replace(/\.json$/i, '.pdf'), JSON.parse((await file.text()).replace(/^\uFEFF/, '')))
+      } catch (error) {
+        errors.push(`${file.name}：${error.message}`)
+      }
+    }
+    $('files').value = ''
+    $('status').textContent = errors.length ? errors.join('；') : '知识库已载入。'
+    if ($('question').value.trim()) search($('question').value)
+  }
+  if (/^#[\w-]{24}$/.test(location.hash) && location.protocol === 'https:') {
+    $('importPanel').remove()
+    let revision = ''
+    let bankKeys = []
+    async function syncBanks() {
+      try {
+        const headers = { Authorization: 'Bearer ' + location.hash.slice(1) }
+        if (revision) headers['If-None-Match'] = '"' + revision + '"'
+        const response = await fetch('/knowledge', { headers })
+        if (response.status === 304) return
+        if (!response.ok) throw new Error('连接已失效')
+        const data = await response.json()
+        for (const key of bankKeys) {
+          answers.delete(key)
+          references.delete(key)
+        }
+        bankKeys = data.banks.map(bank => bank.id)
+        for (const bank of data.banks) importData(bank.name, bank.rows, bank.id)
+        $('libraryStatus').textContent = '当前启用 ' + data.banks.length + ' 份资料'
+        if ($('question').value.trim()) search($('question').value)
+        revision = data.revision
+      } catch {
+        for (const key of bankKeys) {
+          answers.delete(key)
+          references.delete(key)
+        }
+        bankKeys = []
+        revision = ''
+        $('libraryStatus').textContent = '无法同步题库，请检查电脑是否运行 ScreenStudy。'
+        if ($('question').value.trim()) search($('question').value)
+      } finally {
+        setTimeout(syncBanks, 2500)
+      }
+    }
+    syncBanks()
+  }
+</script>
+</html>

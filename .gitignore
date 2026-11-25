@@ -1,0 +1,10 @@
+dist/
+*.tmp
+node.exe
+*.pfx
+*.cer
+*.dpapi
+pair.seed
+ca.thumbprint
+control.url
+banks.json
