@@ -24,7 +24,7 @@ try {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zip = Join-Path $build 'payload.zip'
     [IO.Compression.ZipFile]::CreateFromDirectory($payload, $zip)
-    $setup = Join-Path $Output 'ScreenStudy-Setup-v0.1.0-x64.exe'
+    $setup = Join-Path $Output 'ScreenStudy-Setup-v0.1.1-x64.exe'
     & $csc /nologo /codepage:65001 /target:winexe /platform:x64 /reference:System.Windows.Forms.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:Microsoft.CSharp.dll "/out:$setup" "/resource:$zip,payload.zip" (Join-Path $PSScriptRoot 'Setup.cs')
     if ($LASTEXITCODE) { throw 'Setup build failed.' }
     Get-Item -LiteralPath $setup

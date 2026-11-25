@@ -11,17 +11,53 @@ async function api(path, init = {}) {
   return data
 }
 function notice(message) { $('status').textContent = message }
+function showPairingQr(url) {
+  const canvas = $('qr')
+  canvas.hidden = true
+  if (!url) return false
+
+  try {
+    const code = qrcode(0, 'M')
+    code.addData(url)
+    code.make()
+    const modules = code.getModuleCount()
+    const scale = 4
+    const margin = 4
+    canvas.width = canvas.height = (modules + 2 * margin) * scale
+    const context = canvas.getContext('2d')
+    context.fillStyle = '#fff'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    context.fillStyle = '#000'
+    for (let row = 0; row < modules; row++) {
+      for (let column = 0; column < modules; column++) {
+        if (code.isDark(row, column)) {
+          context.fillRect((column + margin) * scale, (row + margin) * scale, scale, scale)
+        }
+      }
+    }
+    canvas.hidden = false
+    return true
+  } catch {
+    return false
+  }
+}
 function selectPlatform(platform) {
   os = platform
   for (const item of ['ios', 'android']) {
     $(item).classList.toggle('primary', item === os)
     $(item).setAttribute('aria-pressed', String(item === os))
   }
-  $('browser').textContent = os === 'ios' ? '扫描下方二维码，或用 Safari 打开配对链接。' : '扫描下方二维码，或用 Chrome 打开配对链接。'
+  const browser = os === 'ios' ? 'Safari' : 'Chrome'
+  const url = links[$('host').selectedIndex]?.[os] || ''
+  $('pair').value = url
+  const hasQr = showPairingQr(url)
+  let instructions = '等待电脑生成配对链接。'
+  if (url) instructions = `复制配对链接到手机 ${browser} 打开。`
+  if (hasQr) instructions = '扫描下方二维码，或' + instructions
+  $('browser').textContent = instructions
   $('install').textContent = os === 'ios'
     ? '首次按配对页提示安装描述文件，并在「证书信任设置」开启完全信任。'
     : '首次下载 CA 证书，并在系统设置中选择「安装 CA 证书」。'
-  $('pair').value = links[$('host').selectedIndex]?.[os] || ''
 }
 $('ios').onclick = () => selectPlatform('ios')
 $('android').onclick = () => selectPlatform('android')

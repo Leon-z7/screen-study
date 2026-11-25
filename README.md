@@ -4,11 +4,11 @@
 
 ## 安装
 
-在 [GitHub Releases](https://github.com/Leon-z7/screen-study/releases) 下载 `ScreenStudy-Setup-v0.1.0-x64.exe`。支持 Windows 10 / 11 x64，安装包内置 Node.js。安装后自动用默认浏览器打开仅本机可访问的控制台。后续可从「开始」菜单打开 ScreenStudy。
+在 [GitHub Releases](https://github.com/Leon-z7/screen-study/releases) 下载 Windows x64 安装包。支持 Windows 10 / 11 x64，安装包内置 Node.js。安装后自动用默认浏览器打开仅本机可访问的控制台。后续可从「开始」菜单打开 ScreenStudy。
 
 ## 连接手机
 
-1. Windows 和手机连接同一 Wi-Fi。控制台选择 iPhone / iPad 或 Android，再用对应手机扫描二维码。也可以复制配对链接，在 iPhone 的 Safari 或 Android 的 Chrome 中打开。
+1. Windows 和手机连接同一 Wi-Fi。在控制台选择 iPhone / iPad 或 Android，扫描控制台显示的二维码，或复制配对链接，在 iPhone 的 Safari 或 Android 的 Chrome 中打开。
 2. 用电脑控制台显示的 SHA-256 指纹核对首次下载的本机证书。
    - **iPhone / iPad** 在「设置」打开已下载的描述文件，安装后前往「设置 → 通用 → 关于本机 → 证书信任设置」，为 ScreenStudy Local CA 开启完全信任。
    - **Android** 下载 `.cer` 文件。在系统设置搜索「安装证书」或「加密与凭据」，选择「CA 证书」并导入。品牌和系统版本的菜单名称会有变化。
